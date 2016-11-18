@@ -1,0 +1,1 @@
+void AddToCrossSections(double viewing_angle, double amp_nucl_real, double amp_nucl_img, double amp_mag_a_real, double amp_mag_a_img, double amp_mag_b_real, double amp_mag_b_img, double amp_mag_c_real, double amp_mag_c_img, double anglewt, double Q_gaussian_wt, double Norm_Volume, double CrossSection[4]);

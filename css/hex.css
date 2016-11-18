@@ -1,0 +1,135 @@
+html, body {
+  position: relative;
+  height: 100%;
+    font-family: 'Open Sans' !important;
+}
+
+#center {
+    width: 100%;
+    height: 100%;
+    padding: 0 !important;
+    display: -webkit-flex !important;
+    display: flex !important;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    text-align: center;
+}
+
+#plotdiv {
+      height: 100%;
+      display: flex;
+      text-align: start;      
+}
+#plot_title {
+    /*height: 1em;*/
+}
+#plot_controls {
+    min-height: 1em;
+    padding: 1em;
+}
+svg,
+canvas {
+  position: absolute;
+  image-rendering: optimizeSpeed;
+  image-rendering: crisp-edges;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: optimize-contrast;
+  -ms-interpolation-mode: nearest-neighbor;
+}
+
+.axis-label {
+  font-size: 18px;
+}
+
+.axis .tick text {
+  font-size: 14px;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.grid .tick {
+    stroke: lightgrey;
+    opacity: 0.7;
+}
+.grid path {
+      stroke-width: 1;
+      fill: none;
+}
+.grid .tick {
+        stroke: lightgrey;
+        opacity: 0.7;
+        shape-rendering: crispEdges;
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+}
+ 
+.grid path {
+    stroke-width: 0;
+    fill: none;
+}
+ 
+.axis path {
+    fill: none;
+    stroke: #bbb;
+    shape-rendering: crispEdges;
+}
+ 
+.axis text {
+    fill: #555;
+}
+ 
+.axis line {	
+    stroke: #e7e7e7;
+    shape-rendering: crispEdges;
+}
+ 
+.axis .axis-label {
+    user-select: none; 
+    -webkit-user-select: none; 
+    -moz-user-select: none;
+}
+
+.legend, .tick {
+    user-select: none; 
+    -webkit-user-select: none; 
+    -moz-user-select: none;
+}
+ 
+.line {
+    fill: none;
+    stroke-width: 1.5px;
+}
+
+.highlight {
+    stroke-width: 4.5px;
+}
+ 
+.dot {
+    /* consider the stroke-with the mouse detect radius? */
+    stroke: transparent;
+    stroke-width: 10px;  
+    cursor: pointer;
+}
+ 
+.dot:hover {
+    stroke: rgba(68, 127, 255, 0.3);
+}
+
+rect {
+  fill: none;
+  user-select: none; 
+  -webkit-user-select: none; 
+  -moz-user-select: none;
+}
+
+rect.zoom {
+  stroke: steelblue;
+  fill-opacity: 0.5;
+}
