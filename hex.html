@@ -161,9 +161,22 @@
     function run_sim() {
       var data_keys = Object.keys(data);
       if (data_keys.length < 1) { alert("need data to set Q"); return; }
-      var QPoints = data[data_keys[0]].value.map(function(d) {return d[0]});
+      var QPoints = [],
+          Data_Q = new Module.VectorDouble(),
+          Data_DeltaQ = new Module.VectorDouble(),
+          Data_MeanQ = new Module.VectorDouble();
+      var first_dataset = data[data_keys[0]].value;
+      first_dataset.forEach(function(d) {
+        QPoints.push(d[0]);
+        Data_Q.push_back(d[0]);
+        Data_DeltaQ.push_back(d[3]);
+        Data_MeanQ.push_back(d[4]);
+      });
+      //var QPoints = data[data_keys[0]].value.map(function(d) {return d[0]});
       var inputs = pnames.map(function(k) { return parseFloat($("#" + k).val()) });
-      inputs.push(JSON.stringify(QPoints));
+      inputs.push(Data_Q);
+      inputs.push(Data_DeltaQ);
+      inputs.push(Data_MeanQ);
       var output = JSON.parse(Module.calculate.apply({}, inputs));
       var mkeys = Object.keys(output);
       var mindex = data_keys.length;

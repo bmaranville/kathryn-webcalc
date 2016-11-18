@@ -71,7 +71,6 @@ std::string get_default_params() {
 
 //std::vector<std::string> get_default_params_keys() {
 	
-
 //*************************************************************************
 
 //************************************************************************
@@ -111,7 +110,10 @@ std::string calculate(
 	double omega_step_size, //15.0
 	double omega_offset,
 	
-	std::string Q_points_str // to convert to array.
+	std::vector<double> Data_Q,
+	std::vector<double> Data_DeltaQ,
+	std::vector<double> Data_MeanQ
+	
 )
 {
 //*************************************************************************
@@ -129,17 +131,16 @@ double PiNum = 2.0*acos(0.0);
 //Get SANS data for template and Q-smearing:
 //*************************************************************************
 
-double Data_Q[1000], Data_I[1000], Data_DeltaI[1000], Data_DeltaQ[1000], Data_MeanQ[1000], Data_Shadow[1000];
-double Data_Q2[1000], Data_I2[1000], Data_DeltaI2[1000], Data_DeltaQ2[1000], Data_MeanQ2[1000], Data_Shadow2[1000];
-double Data_Q3[1000], Data_I3[1000], Data_DeltaI3[1000], Data_DeltaQ3[1000], Data_MeanQ3[1000], Data_Shadow3[1000];
-double Data_Q4[1000], Data_I4[1000], Data_DeltaI4[1000], Data_DeltaQ4[1000], Data_MeanQ4[1000], Data_Shadow4[1000];
+//double Data_Q[1000], Data_I[1000], Data_DeltaI[1000], Data_DeltaQ[1000], Data_MeanQ[1000], Data_Shadow[1000];
+//double Data_I[1000], Data_DeltaI[1000], Data_DeltaQ[1000], Data_MeanQ[1000], Data_Shadow[1000];
+//double Data_Q2[1000], Data_I2[1000], Data_DeltaI2[1000], Data_DeltaQ2[1000], Data_MeanQ2[1000], Data_Shadow2[1000];
+//double Data_Q3[1000], Data_I3[1000], Data_DeltaI3[1000], Data_DeltaQ3[1000], Data_MeanQ3[1000], Data_Shadow3[1000];
+//double Data_Q4[1000], Data_I4[1000], Data_DeltaI4[1000], Data_DeltaQ4[1000], Data_MeanQ4[1000], Data_Shadow4[1000];
 
 int remove_points = 25;//40
-json Q_points_json = json::parse(Q_points_str);
 
-const int QPoints = Q_points_json.size();
-fill_double_from_json(Data_Q, Q_points_json);
-
+const int QPoints = Data_Q.size();
+//std::copy(Q_values.begin(), Q_values.end(), Data_Q);
 
 //Get_6ColumnSANSdata(remove_points, FileToReadIn, Data_Q, Data_I, Data_DeltaI, Data_DeltaQ, Data_MeanQ, Data_Shadow);
 //Get_6ColumnSANSdata(remove_points, FileToReadIn2, Data_Q2, Data_I2, Data_DeltaI2, Data_DeltaQ2, Data_MeanQ2, Data_Shadow2);
@@ -500,6 +501,7 @@ return joutput.dump();
 
 
 EMSCRIPTEN_BINDINGS(my_module) {
+	register_vector<double>("VectorDouble");
     emscripten::function("calculate", &calculate);
     emscripten::function("get_default_params", &get_default_params);
 };
