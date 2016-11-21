@@ -8,14 +8,19 @@
 <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
 <script type="text/javascript" src="//www.ncnr.nist.gov/instruments/magik/d3-science/xy-chart.js"></script>
 <script type="text/javascript" src="js/jquery.layout-latest.js"></script>
-<script type="text/javascript" src="hex.js"></script>
 <script type="text/javascript">
   // window-global variables
   var data = {};
   var model = {};
   var default_params = {};
-  var pnames;
+  var pnames = [];
   var columns = ["Q", "I(Q)", "delta I(Q)", "sigmaQ", "meanQ", "ShadowFactor"];
+  var Module = {
+    preRun: [],
+    postRun: []
+  };
+  var MODULE_NAME = "hex";
+  var use_wasm = false;
 </script>
 <script type="text/javascript">
   window.onload = function() {
@@ -28,20 +33,6 @@
       ,  east__onresize:	    $.layout.callbacks.resizePaneAccordions
       ,  south__onresize:     $.layout.callbacks.resizePaneAccordions
       ,  center__onresize:    $.layout.callbacks.resizePaneAccordions
-    });
-    
-    var default_params_array = JSON.parse(Module.get_default_params());
-    pnames = default_params_array.map(function(dp) { return dp[0] });
-    default_params_array.forEach(function(dp) { default_params[dp[0]] = dp[1] });
-    
-    // build the list of parameters on the left panel, from the Parameters object
-    var params_panel = $("#left");
-    pnames.forEach(function(k) {
-      if (default_params.hasOwnProperty(k)) {
-        var param_label = params_panel.append($("<label />", {"text": k}));
-        param_label.append($("<input>", {"type": "text", "id": k, "width": "90px", "value": default_params[k]}));
-        params_panel.append("<br>");
-      }
     });
     
     var download = (function () {
@@ -86,6 +77,26 @@
       });
       return data_out;
     }
+    
+    function make_params_panel() {
+      var default_params_array = JSON.parse(Module.get_default_params());
+      pnames = default_params_array.map(function(dp) { return dp[0] });
+      default_params_array.forEach(function(dp) { default_params[dp[0]] = dp[1] });
+      
+      // build the list of parameters on the left panel, from the Parameters object
+      var params_panel = $("#left");
+      params_panel.empty();
+      pnames.forEach(function(k) {
+        if (default_params.hasOwnProperty(k)) {
+          var param_label = params_panel.append($("<label />", {"text": k}));
+          param_label.append($("<input>", {"type": "text", "id": k, "width": "90px", "value": default_params[k]}));
+          params_panel.append("<br>");
+        }
+      });
+      params_panel.append($("<button />", {"text": "run", "click": run_sim}));
+    }
+    
+    Module.postRun.push(make_params_panel);
     
     function plotData(datasets) {
       var chart = xyChart({show_line: true, show_errorbars: true, ytransform: 'log'})
@@ -177,6 +188,7 @@
       inputs.push(Data_Q);
       inputs.push(Data_DeltaQ);
       inputs.push(Data_MeanQ);
+      /*
       var output = JSON.parse(Module.calculate.apply({}, inputs));
       var mkeys = Object.keys(output);
       var mindex = data_keys.length;
@@ -189,6 +201,18 @@
           })
         }
       });
+      */
+      var output = Module.calculate.apply({}, inputs);
+      var mindex = data_keys.length;
+      var model = {};
+      for (var b=0; b<output.size(); b++) {
+        var c = output.get(b),
+            m = {index: mindex, value: []};
+        for (var bb=0; bb<c.size(); bb++) {
+          m.value.push([QPoints[bb], c.get(bb)]);
+        }
+        model['m' + mindex++] = m;
+      }
       var combined = jQuery.extend(true, {}, data);
       combined = jQuery.extend(true, combined, model);
       d3.select("#export_model").on("click", function() { export_model(output, QPoints, 5) });
@@ -217,8 +241,27 @@
       
     }
     
-    params_panel.append($("<button />", {"text": "run", "click": run_sim}));      
+    function load_module(module_name) {
+      if (use_wasm) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', module_name + '.wasm', true);
+        xhr.responseType = 'arraybuffer';
+        xhr.onload = function() {
+          Module.wasmBinary = xhr.response;
+
+          var script = document.createElement('script');
+          script.src = module_name + ".js";
+          document.body.appendChild(script);
+        };
+        xhr.send(null);
+      } else {
+        var script = document.createElement('script');
+        script.src = module_name + ".js";
+        document.body.appendChild(script);
+      }
+    }
     
+    load_module(MODULE_NAME);
   }
 </script>
 </head>

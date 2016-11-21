@@ -28,6 +28,8 @@ void fill_double_from_json(double* to_fill, json j) {
     //cout << endl;
 }
 
+typedef std::vector<double> column; // return values holder
+
 json default_params = json::array({
 	{"correlation", 1.0}, // 1.0 = picks axis closest to X; 0 = picks random axis
     {"YesNo_q_smearing", 0}, //0 = no; 1=yes
@@ -74,7 +76,7 @@ std::string get_default_params() {
 //*************************************************************************
 
 //************************************************************************
-std::string calculate(
+std::vector<column> calculate(
 	double correlation, //1.0 = picks axis closest to X; 0 = picks random axis
 	double YesNo_q_smearing, //0 = no; 1=yes
 	double scatt_centers, //20, up to 90 possible (convert to int)
@@ -495,13 +497,16 @@ m4.push_back(Model4[qq]);
 //Data_out[4][qq] = Data_ModelSF90[qq];
 //Write_data_noheaders(5, FileToWriteOut, Data_out, QPoints);}
 
-json joutput = {{"m1", m1}, {"m2", m2}, {"m3", m3}, {"m4", m4}};
-return joutput.dump();
+//json joutput = {{"m1", m1}, {"m2", m2}, {"m3", m3}, {"m4", m4}};
+//return joutput.dump();
+return std::vector<column> {m1, m2, m3, m4};
 }
 
+typedef std::vector<double> column;
 
 EMSCRIPTEN_BINDINGS(my_module) {
-	register_vector<double>("VectorDouble");
+	  register_vector<double>("VectorDouble");
+    register_vector<column>("VectorColumn");
     emscripten::function("calculate", &calculate);
     emscripten::function("get_default_params", &get_default_params);
 };
