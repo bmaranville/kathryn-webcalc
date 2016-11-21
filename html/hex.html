@@ -1,13 +1,14 @@
 <html>
 <head>
 <title>Hexagonally packed spheres 7</title>
-<link rel="stylesheet" href="css/layout-default-latest.css" />
 <link rel="stylesheet" href="css/hex.css" />
+<link rel="stylesheet" href="css/layout-default-latest.css" />
 <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
 <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script>
 <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
 <script type="text/javascript" src="//www.ncnr.nist.gov/instruments/magik/d3-science/xy-chart.js"></script>
 <script type="text/javascript" src="js/jquery.layout-latest.js"></script>
+<script type="text/javascript" src="js/es6-promise.min.js"></script>
 <script type="text/javascript">
   // window-global variables
   var data = {};
@@ -19,6 +20,7 @@
     preRun: [],
     postRun: []
   };
+  var chart;
   var MODULE_NAME = "hex";
   var use_wasm = false;
 </script>
