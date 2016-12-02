@@ -1,13 +1,19 @@
 <html>
 <head>
 <title>Hexagonally packed spheres 7</title>
-<link rel="stylesheet" href="css/layout-default-latest.css" />
 <link rel="stylesheet" href="css/hex.css" />
+<link rel="stylesheet" href="css/layout-default-latest.css" />
+<link href="http://code.jquery.com/ui/1.10.4/themes/start/jquery-ui.css" type="text/css" rel="Stylesheet" />
+<!--
 <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
+-->
+<link rel="stylesheet" type="text/css" href="css/xkcd.css"/>
 <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script>
 <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
 <script type="text/javascript" src="//www.ncnr.nist.gov/instruments/magik/d3-science/xy-chart.js"></script>
+<script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
 <script type="text/javascript" src="js/jquery.layout-latest.js"></script>
+<script type="text/javascript" src="js/es6-promise.min.js"></script>
 <script type="text/javascript">
   // window-global variables
   var data = {};
@@ -19,6 +25,7 @@
     preRun: [],
     postRun: []
   };
+  var chart;
   var MODULE_NAME = "hex";
   var use_wasm = false;
 </script>
@@ -32,7 +39,7 @@
       ,  west__onresize:	    $.layout.callbacks.resizePaneAccordions
       ,  east__onresize:	    $.layout.callbacks.resizePaneAccordions
       ,  south__onresize:     $.layout.callbacks.resizePaneAccordions
-      ,  center__onresize:    $.layout.callbacks.resizePaneAccordions
+      ,  center__onresize:    function() { if (chart && chart.autofit) {chart.autofit()} }
     });
     
     var download = (function () {
@@ -99,7 +106,7 @@
     Module.postRun.push(make_params_panel);
     
     function plotData(datasets) {
-      var chart = xyChart({show_line: true, show_errorbars: true, ytransform: 'log'})
+      chart = xyChart({show_line: true, show_errorbars: true, ytransform: 'log'})
       var datas = [];
       var options = {
         series: [],
@@ -267,7 +274,7 @@
 </head>
 <body>
   <div id="top" class="ui-layout-north">Hexagonal</div>
-  <div id="center" class="ui-layout-center">
+  <div id="center" class="ui-layout-wrapper ui-layout-center">
     <div id="plotdiv"></div>
     <div id="plot_controls">
       <label>x-axis
