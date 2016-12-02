@@ -1,0 +1,294 @@
+<html>
+<head>
+<title>Hexagonally packed spheres 7</title>
+<link rel="stylesheet" href="css/layout-default-latest.css" />
+<link rel="stylesheet" href="css/hex.css" />
+<link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
+<script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+<script type="text/javascript" src="//www.ncnr.nist.gov/instruments/magik/d3-science/xy-chart.js"></script>
+<script type="text/javascript" src="js/jquery.layout-latest.js"></script>
+<script type="text/javascript" src="js/geturlvars.js"></script>
+<script type="text/javascript">
+  // window-global variables
+  var data = {};
+  var model = {};
+  var default_params = {};
+  var pnames = [];
+  var columns = ["Q", "I(Q)", "delta I(Q)", "sigmaQ", "meanQ", "ShadowFactor"];
+  var Module = {
+    preRun: [],
+    postRun: []
+  };
+  //var MODULE_NAME = "hex";
+  var use_wasm = false;
+</script>
+<script type="text/javascript">
+  window.onload = function() {
+    var layout = $('body').layout({
+         west__size:          350
+      ,  east__size:          0
+      ,  south__size:         200
+        // RESIZE Accordion widget when panes resize
+      ,  west__onresize:	    $.layout.callbacks.resizePaneAccordions
+      ,  east__onresize:	    $.layout.callbacks.resizePaneAccordions
+      ,  south__onresize:     $.layout.callbacks.resizePaneAccordions
+      ,  center__onresize:    $.layout.callbacks.resizePaneAccordions
+    });
+    
+    var download = (function () {
+      var a = document.createElement("a");
+      document.body.appendChild(a);
+      a.style = "display: none";
+      a.id = "savedata";
+      return function (data, fileName) {
+        var blob = new Blob([data], {type: "text/plain"});
+        // IE 10 / 11 
+        if (window.navigator.msSaveOrOpenBlob) { 
+          window.navigator.msSaveOrOpenBlob(blob, fileName); 
+        } else {
+          var url = window.URL.createObjectURL(blob);
+          a.href = url;
+          a.download = fileName;
+          a.target = "_blank";
+          //window.open(url, '_blank', fileName);
+          a.click();
+          setTimeout(function() { window.URL.revokeObjectURL(url) }, 1000);
+        }
+      };
+    }());
+      
+    // add file loader
+    $("#top").append($('<input />', {
+        'type': 'file', 
+        'multiple':'true', 
+        'id':'datafile', 
+        'name':'datafile'})
+        .change(loadDataFile));
+    
+    function string_trim(str) {
+      return str.replace(/^\s+/, '').replace(/\s+$/, '');
+    }
+        
+    function loadCols(filecontents, skip_rows) {
+      var data_out = [];
+      var rowstrings = filecontents.split("\n").slice(skip_rows, -1);
+      rowstrings.forEach(function(rs,i) {
+        data_out[i] = string_trim(rs).split(/\s+/).map(parseFloat);
+      });
+      return data_out;
+    }
+    
+    function make_params_panel() {
+      var default_params_array = JSON.parse(Module.get_default_params());
+      pnames = default_params_array.map(function(dp) { return dp[0] });
+      default_params_array.forEach(function(dp) { default_params[dp[0]] = dp[1] });
+      
+      // build the list of parameters on the left panel, from the Parameters object
+      var params_panel = $("#left");
+      params_panel.empty();
+      pnames.forEach(function(k) {
+        if (default_params.hasOwnProperty(k)) {
+          var param_label = params_panel.append($("<label />", {"text": k}));
+          param_label.append($("<input>", {"type": "text", "id": k, "width": "90px", "value": default_params[k]}));
+          params_panel.append("<br>");
+        }
+      });
+      params_panel.append($("<button />", {"text": "run", "click": run_sim}));
+    }
+    
+    Module.postRun.push(make_params_panel);
+    
+    function plotData(datasets) {
+      var chart = xyChart({show_line: true, show_errorbars: true, ytransform: 'log'})
+      var datas = [];
+      var options = {
+        series: [],
+        legend: {show: true, left: 250},
+        axes: {xaxis: {label: "Q (inv. A)"}, yaxis: {label: "I(Q)"}}
+      }
+      for (var f in datasets) {
+        var d = datasets[f]['value'];
+        var i = datasets[f]['index'];
+        datas[i] = (d.map(function(dd) {
+          return [dd[0], dd[1], {xlower: dd[0]-dd[3], xupper: dd[0]+dd[3], ylower: dd[1] - dd[2], yupper: dd[1] + dd[2]}]
+        }))
+        options.series[i] = {"label": f};
+      }
+      chart.options(options);
+      $("#plotdiv").empty();
+      var c = d3.select("#plotdiv")
+        .data([datas])
+        .call(chart);
+      chart.autofit();
+      chart.zoomRect(true);
+      chart.xtransform(d3.select("#xtransform").node().value);
+      chart.ytransform(d3.select("#ytransform").node().value);
+      d3.select("#xtransform").on("change", function() { chart.xtransform(this.value); });
+      d3.select("#ytransform").on("change", function() { chart.ytransform(this.value); });
+      d3.select("#download_svg").on("click", function() {
+        var svg = chart.export_svg();
+        var serializer = new XMLSerializer();
+        var output = serializer.serializeToString(svg);
+        var filename = prompt("Save svg as:", "plot.svg");
+        if (filename == null) {return} // cancelled
+        download(output, filename);
+      });
+      
+    }
+      
+    
+    function loadDataFile(ev) {
+      var files = ev.target.files;
+      data = {};
+      var load_promises = [];
+      // new Promise(function(resolve, reject) { resolve(true); });
+      for (var i=0; i<files.length; i++) {
+        var file = files[i];
+        var datafilename = file.name;
+        
+        var load_promise = new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader._index = i;
+          reader._filename = datafilename;
+          reader.onload = function(e) {
+              data[this._filename] = {index: this._index, value: loadCols(this.result, 5)};
+              resolve(this._index);
+          }
+          reader.onerror = function(e) {
+            reject(e);
+          }
+          reader.readAsText(file);
+        })
+        load_promises.push(load_promise);
+      }
+      Promise.all(load_promises).then(function() { 
+        var combined = jQuery.extend(true, {}, data);
+        combined = jQuery.extend(true, combined, model);
+        plotData(combined); 
+      });
+      return load_promises;
+    }
+    
+    function run_sim() {
+      var data_keys = Object.keys(data);
+      if (data_keys.length < 1) { alert("need data to set Q"); return; }
+      var QPoints = [],
+          Data_Q = new Module.VectorDouble(),
+          Data_DeltaQ = new Module.VectorDouble(),
+          Data_MeanQ = new Module.VectorDouble();
+      var first_dataset = data[data_keys[0]].value;
+      first_dataset.forEach(function(d) {
+        QPoints.push(d[0]);
+        Data_Q.push_back(d[0]);
+        Data_DeltaQ.push_back(d[3]);
+        Data_MeanQ.push_back(d[4]);
+      });
+      //var QPoints = data[data_keys[0]].value.map(function(d) {return d[0]});
+      var inputs = pnames.map(function(k) { return parseFloat($("#" + k).val()) });
+      inputs.push(Data_Q);
+      inputs.push(Data_DeltaQ);
+      inputs.push(Data_MeanQ);
+      /*
+      var output = JSON.parse(Module.calculate.apply({}, inputs));
+      var mkeys = Object.keys(output);
+      var mindex = data_keys.length;
+      var model = {};
+      mkeys.forEach(function(m) {
+        model[m] = {
+          index: mindex++, 
+          value: output[m].map(function(y,i) {
+            return [QPoints[i], y]
+          })
+        }
+      });
+      */
+      var output = Module.calculate.apply({}, inputs);
+      var mindex = data_keys.length;
+      var model = {};
+      for (var b=0; b<output.size(); b++) {
+        var c = output.get(b),
+            m = {index: mindex, value: []};
+        for (var bb=0; bb<c.size(); bb++) {
+          m.value.push([QPoints[bb], c.get(bb)]);
+        }
+        model['m' + mindex++] = m;
+      }
+      var combined = jQuery.extend(true, {}, data);
+      combined = jQuery.extend(true, combined, model);
+      d3.select("#export_model").on("click", function() { export_model(output, QPoints, 5) });
+      plotData(combined);
+      return output;
+    }
+    
+    function export_model(output, QPoints, precision) {
+      var precision = precision || 5;
+      var mkeys = Object.keys(output);
+      if (mkeys.length < 1) {return}
+      var str_out = "#Q\t";
+      str_out += mkeys.join("\t");
+      str_out += "\n";
+      for (var r=0; r<output[mkeys[0]].length; r++) {
+        var row = [QPoints[r].toPrecision(precision)];
+        for (var c=0; c<mkeys.length; c++) {
+          var m = mkeys[c];
+          row.push(output[m][r].toPrecision(precision));
+        }
+        str_out += row.join("\t") + "\n";
+      }
+      var filename = prompt("Save model as:", "model.dat");
+      if (filename == null) {return} // cancelled
+      download(str_out, filename);
+      
+    }
+    
+    function load_module(module_name) {
+      if (use_wasm) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', module_name + '.wasm', true);
+        xhr.responseType = 'arraybuffer';
+        xhr.onload = function() {
+          Module.wasmBinary = xhr.response;
+
+          var script = document.createElement('script');
+          script.src = module_name + ".js";
+          document.body.appendChild(script);
+        };
+        xhr.send(null);
+      } else {
+        var script = document.createElement('script');
+        script.src = module_name + ".js";
+        document.body.appendChild(script);
+      }
+    }
+    
+    var MODULE_NAME = $.getUrlVar("model");
+    load_module(MODULE_NAME);
+  }
+</script>
+</head>
+<body>
+  <div id="top" class="ui-layout-north">Hexagonal</div>
+  <div id="center" class="ui-layout-center">
+    <div id="plotdiv"></div>
+    <div id="plot_controls">
+      <label>x-axis
+        <select id="xtransform">
+          <option>log</option>
+          <option>linear</option>
+        </select>
+      </label>
+      <label>y-axis
+        <select id="ytransform">
+          <option>log</option>
+          <option>linear</option>
+        </select>
+      </label>
+      <button id="download_svg">get svg</button>
+      <button id="export_model">export</button>
+    </div>
+  </div>
+  <div id="left" class="ui-layout-west">
+  </div>
+</body>
+</html>
