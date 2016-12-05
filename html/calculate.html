@@ -210,7 +210,7 @@
         var c = output.get(b),
             m = {index: mindex, value: []};
         for (var bb=0; bb<c.size(); bb++) {
-          m.value.push([QPoints[bb], c.get(bb)]);
+          m.value.push([QPoints[bb], c.get(bb), 0, 0]);
         }
         model['m' + mindex++] = m;
       }
