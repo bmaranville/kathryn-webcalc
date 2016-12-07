@@ -5,7 +5,6 @@ from __future__ import print_function
 import sys
 import os
 import inspect
-from collections import OrderedDict
 import json
 import traceback
 
@@ -105,12 +104,22 @@ def webgen(model_info):
 
 EMCC = "emcc --bind --memory-init-file 0 -s DISABLE_EXCEPTION_CATCHING=0 -O3 -o html/model/%s.js %s"
 def compile_model(name):
+    # type: (str) -> str
+    """
+    Return model category, or "unknown" if category is not specified.
+    """
     model_info = load_model_info(name)
     model_file = "/tmp/%s.cpp" % model_info.id
     with open(model_file, "w") as fid:
         fid.write(webgen(model_info))
-    os.system(EMCC % (model_info.id, model_file))
+    status = os.system(EMCC % (model_info.id, model_file))
+    if status == 0:
+        return model_info.category.split(':')[-1] if model_info.category else "unknown"
+    else:
+        return None
 
+MODEL_PATH = "html/model"
+CATEGORY_FILE = MODEL_PATH + "/category.json"
 def main():
     if len(sys.argv) < 2:
         print("usage: ./webgen.py [model|all]")
@@ -120,14 +129,24 @@ def main():
         raise RuntimeError("Must run from the source directory because I'm lazy")
 
     # Make sure the output directory exists
-    if not os.path.exists("html/model"):
-        os.makedirs("html/model")
+    if not os.path.exists(MODEL_PATH):
+        os.makedirs(MODEL_PATH)
+
+    if os.path.exists(CATEGORY_FILE):
+        with open(CATEGORY_FILE) as fid:
+            categories = json.load(fid)
+    else:
+        categories = {}
 
     model_list = list_models(kind="c") if sys.argv[1] == "all" else sys.argv[1:]
     for name in model_list:
         print("compiling %s..."%name)
         # TODO: maybe continue after error?
-        compile_model(name)
+        category = compile_model(name)
+        if category:
+            categories.setdefault(category, []).append(name)
+    with open(CATEGORY_FILE, "w") as fid:
+        json.dump(categories, fid)
 
 if __name__ == "__main__":
     main()
