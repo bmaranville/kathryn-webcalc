@@ -243,21 +243,22 @@
     }
     
     function load_module(module_name) {
+      var module_path = "model/" + module_name;
       if (use_wasm) {
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', module_name + '.wasm', true);
+        xhr.open('GET', module_path + '.wasm', true);
         xhr.responseType = 'arraybuffer';
         xhr.onload = function() {
           Module.wasmBinary = xhr.response;
 
           var script = document.createElement('script');
-          script.src = module_name + ".js";
+          script.src = module_path + ".js";
           document.body.appendChild(script);
         };
         xhr.send(null);
       } else {
         var script = document.createElement('script');
-        script.src = module_name + ".js";
+        script.src = module_path + ".js";
         document.body.appendChild(script);
       }
     }
