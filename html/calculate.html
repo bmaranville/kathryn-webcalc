@@ -80,7 +80,9 @@
     }
     
     function make_params_panel() {
-      var default_params_array = JSON.parse(Module.get_default_params());
+      var par_info = Module.get_default_params();
+      var default_params_array = JSON.parse(par_info);
+      // Note: units = dp[2], tooltip = dp[3]; limits not include because +/-inf
       pnames = default_params_array.map(function(dp) { return dp[0] });
       default_params_array.forEach(function(dp) { default_params[dp[0]] = dp[1] });
       

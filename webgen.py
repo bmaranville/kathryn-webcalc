@@ -10,7 +10,7 @@ import traceback
 
 from sasmodels.core import load_model_info, list_models
 from sasmodels.modelinfo import ModelInfo, Parameter
-from sasmodels.generate import load_template, model_sources, _add_source, _gen_fn, convert_type, F64
+from sasmodels.generate import load_template, model_sources, _add_source, _gen_fn, convert_type, F64, make_html
 
 # Get the current line number so that we can tell the C-compiler
 # where to find the broken source code.  Add 2 since that is
@@ -58,7 +58,15 @@ def webgen(model_info):
     partable = model_info.parameters
     pars_1d = [q] + partable.iq_parameters
 
-    init_1d = [[p.id, p.default] for p in partable.iq_parameters]
+    # Build parameter and model info
+    # p.limits not included because json doesn't handle +/-inf
+    init_1d = [[p.id, p.default, p.units, p.description]
+               for p in partable.iq_parameters]
+    json_info = json.dumps(init_1d).replace('"', r'\"')
+    # Note: could construct the html using the following:
+    #     make_html(model_info)
+    # with the model graph inserted in the usual place.
+
     # Note: include q in parameter list to simplify code in the case of
     # the porod model which has no parameters.
     decl_1d = ['double %s' % p.id for p in partable.iq_parameters] + [
@@ -69,7 +77,7 @@ def webgen(model_info):
     call_1d = ["q[i]"] + [p.id for p in partable.iq_parameters]
     substitutions = {
         'LINE': LINE,
-        'INIT_1D': json.dumps(init_1d).replace('"', r'\"'),
+        'INIT_1D': json_info,
         'DECL_1D': ", ".join(decl_1d),
         'CALL_1D': ", ".join(call_1d),
     }
