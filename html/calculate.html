@@ -16,10 +16,7 @@
   var default_params = {};
   var pnames = [];
   var columns = ["Q", "I(Q)", "delta I(Q)", "sigmaQ", "meanQ", "ShadowFactor"];
-  var Module = {
-    preRun: [],
-    postRun: []
-  };
+  var Module = {}; // emscripten module will go here.
   //var MODULE_NAME = "hex";
   var use_wasm = false;
 </script>
@@ -58,6 +55,16 @@
       };
     }());
       
+    // add model chooser
+    $("#top").append($('<select />', {"id": "model_select"})
+        .change(function() {load_module(this.value);})
+    );    
+    $.getJSON("models.json", function(modelnames) { 
+      modelnames.forEach(function(m) {
+        $("#model_select").append($("<option />", {value: m, text: m}));
+      });
+    });
+
     // add file loader
     $("#top").append($('<input />', {
         'type': 'file', 
@@ -65,6 +72,13 @@
         'id':'datafile', 
         'name':'datafile'})
         .change(loadDataFile));
+    var qrange_params = [["Qmin", 0.001], ["Qsteps", 100], ["Qmax", 0.1], ["dQ/Q", 0.01]];
+    qrange_params.forEach(function(qp) {
+      var k = qp[0],
+          v = qp[1];
+      var param_label = $("#top").append($("<label />", {"text": k}));
+      param_label.append($("<input>", {"type": "text", "id": '_'+k.replace("/", "_"), "width": "90px", "value": v}));
+    });
     
     function string_trim(str) {
       return str.replace(/^\s+/, '').replace(/\s+$/, '');
@@ -96,9 +110,7 @@
       });
       params_panel.append($("<button />", {"text": "run", "click": run_sim}));
     }
-    
-    Module.postRun.push(make_params_panel);
-    
+        
     function plotData(datasets) {
       var chart = xyChart({show_line: true, show_errorbars: true, ytransform: 'log'})
       var datas = [];
@@ -172,18 +184,35 @@
     
     function run_sim() {
       var data_keys = Object.keys(data);
-      if (data_keys.length < 1) { alert("need data to set Q"); return; }
       var QPoints = [],
           Data_Q = new Module.VectorDouble(),
           Data_DeltaQ = new Module.VectorDouble(),
           Data_MeanQ = new Module.VectorDouble();
-      var first_dataset = data[data_keys[0]].value;
-      first_dataset.forEach(function(d) {
-        QPoints.push(d[0]);
-        Data_Q.push_back(d[0]);
-        Data_DeltaQ.push_back(d[3]);
-        Data_MeanQ.push_back(d[4]);
-      });
+      if (data_keys.length < 1) {
+        var Qmin = parseFloat($("#_Qmin").val()),
+            Qsteps = parseFloat($("#_Qsteps").val()),
+            Qmax = parseFloat($("#_Qmax").val()),
+            dQ_Q = parseFloat($("#_dQ_Q").val());
+        var log_dq = Math.log(Qmax/Qmin) / Qsteps,
+            log_qmin = Math.log(Qmin),
+            log_qmax = Math.log(Qmax);
+        for (var qq=0; qq<Qsteps; qq++) {
+          var q = Math.exp(log_qmin + log_dq * qq);
+          QPoints.push(q);
+          Data_Q.push_back(q);
+          Data_DeltaQ.push_back(q*dQ_Q);
+          Data_MeanQ.push_back(q);
+        }
+      }
+      else {
+        var first_dataset = data[data_keys[0]].value;
+        first_dataset.forEach(function(d) {
+          QPoints.push(d[0]);
+          Data_Q.push_back(d[0]);
+          Data_DeltaQ.push_back(d[3]);
+          Data_MeanQ.push_back(d[4]);
+        });
+      }
       //var QPoints = data[data_keys[0]].value.map(function(d) {return d[0]});
       var inputs = pnames.map(function(k) { return parseFloat($("#" + k).val()) });
       inputs.push(Data_Q);
@@ -243,6 +272,7 @@
     }
     
     function load_module(module_name) {
+      Module = {postRun: [function() {make_params_panel(); run_sim();}]};
       if (use_wasm) {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', module_name + '.wasm', true);
@@ -268,7 +298,7 @@
 </script>
 </head>
 <body>
-  <div id="top" class="ui-layout-north">Hexagonal</div>
+  <div id="top" class="ui-layout-north">SANS models</div>
   <div id="center" class="ui-layout-center">
     <div id="plotdiv"></div>
     <div id="plot_controls">
