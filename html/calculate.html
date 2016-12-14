@@ -245,23 +245,23 @@
       }
       var combined = jQuery.extend(true, {}, data);
       combined = jQuery.extend(true, combined, model);
-      d3.select("#export_model").on("click", function() { export_model(output, QPoints, 5) });
+      d3.select("#export_model").on("click", function() { export_model(model, QPoints, 5) });
       plotData(combined);
       return output;
     }
     
-    function export_model(output, QPoints, precision) {
+    function export_model(model, QPoints, precision) {
       var precision = precision || 5;
-      var mkeys = Object.keys(output);
+      var mkeys = Object.keys(model);
       if (mkeys.length < 1) {return}
       var str_out = "#Q\t";
       str_out += mkeys.join("\t");
       str_out += "\n";
-      for (var r=0; r<output[mkeys[0]].length; r++) {
+      for (var r=0; r<model[mkeys[0]].value.length; r++) {
         var row = [QPoints[r].toPrecision(precision)];
         for (var c=0; c<mkeys.length; c++) {
           var m = mkeys[c];
-          row.push(output[m][r].toPrecision(precision));
+          row.push(model[m].value[r][1].toPrecision(precision));
         }
         str_out += row.join("\t") + "\n";
       }
