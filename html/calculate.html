@@ -63,6 +63,7 @@
       modelnames.forEach(function(m) {
         $("#model_select").append($("<option />", {value: m, text: m}));
       });
+      load_module(modelnames[0]);
     });
 
     // add file loader
@@ -272,7 +273,8 @@
     }
     
     function load_module(module_name) {
-      Module = {postRun: [function() {make_params_panel(); run_sim();}]};
+      //Module = {postRun: [function() {make_params_panel(); run_sim();}]};
+      Module = {postRun: [function() {make_params_panel();}]};
       if (use_wasm) {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', module_name + '.wasm', true);
@@ -291,9 +293,7 @@
         document.body.appendChild(script);
       }
     }
-    
-    var MODULE_NAME = $.getUrlVar("model");
-    load_module(MODULE_NAME);
+
   }
 </script>
 </head>
