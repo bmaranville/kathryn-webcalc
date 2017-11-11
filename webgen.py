@@ -10,7 +10,7 @@ import traceback
 
 from sasmodels.core import load_model_info, list_models
 from sasmodels.modelinfo import ModelInfo, Parameter
-from sasmodels.generate import load_template, model_sources, _add_source, _gen_fn, convert_type, F64, make_html
+from sasmodels import generate as gen
 
 # Get the current line number so that we can tell the C-compiler
 # where to find the broken source code.  Add 2 since that is
@@ -47,7 +47,7 @@ EMSCRIPTEN_BINDINGS(my_module) {
 };
 """
 
-def webgen(model_info):
+def build_cpp(model_info):
     # type: (ModelInfo) -> str
     """
     Like sasmodels.generate, bout outputs an emscripten wrapper instead.
@@ -84,30 +84,62 @@ def webgen(model_info):
     driver = TEMPLATE % substitutions
 
     # ... copied from sasmodels.generate.make_source ...
-    kernel_header = load_template('kernel_header.c')
-    user_code = [(f, open(f).read()) for f in model_sources(model_info)]
+    kernel_header = gen.load_template('kernel_header.c')
+    user_code = [(f, open(f).read()) for f in gen.model_sources(model_info)]
     source = []
-    _add_source(source, *kernel_header)
+    gen._add_source(source, *kernel_header)
     for path, code in user_code:
-        _add_source(source, code, path)
+        gen._add_source(source, code, path)
 
     # Generate form_volume function, etc. from body only
     if isinstance(model_info.form_volume, str):
         pars = partable.form_volume_parameters
-        source.append(_gen_fn('form_volume', pars, model_info.form_volume,
-                              model_info.filename, model_info._form_volume_line))
+        source.append(gen._gen_fn('form_volume', pars, model_info.form_volume,
+                                  model_info.filename, model_info._form_volume_line))
     if isinstance(model_info.Iq, str):
         pars = [q] + partable.iq_parameters
-        source.append(_gen_fn('Iq', pars, model_info.Iq,
-                              model_info.filename, model_info._Iq_line))
+        source.append(gen._gen_fn('Iq', pars, model_info.Iq,
+                                  model_info.filename, model_info._Iq_line))
     if isinstance(model_info.Iqxy, str):
         pars = [qx, qy] + partable.iqxy_parameters
-        source.append(_gen_fn('Iqxy', pars, model_info.Iqxy,
-                              model_info.filename, model_info._Iqxy_line))
+        source.append(gen._gen_fn('Iqxy', pars, model_info.Iqxy,
+                                  model_info.filename, model_info._Iqxy_line))
     # ... done copy ...
 
     source.append(driver)
-    return convert_type("\n".join(source), F64)
+    return gen.convert_type("\n".join(source), gen.F64)
+
+PLOT_INSERT = """
+.. raw: html
+
+  <div id="top" class="ui-layout-north">Hexagonal</div>
+  <div id="center" class="ui-layout-center">
+    <div id="plotdiv"></div>
+    <div id="plot_controls">
+      <label>x-axis
+        <select id="xtransform">
+          <option>log</option>
+          <option>linear</option>
+        </select>
+      </label>
+      <label>y-axis
+        <select id="ytransform">
+          <option>log</option>
+          <option>linear</option>
+        </select>
+      </label>
+      <button id="download_svg">get svg</button>
+      <button id="export_model">export</button>
+    </div>
+  </div>
+  <div id="left" class="ui-layout-west">
+  </div>
+
+"""
+SPLIT_TITLE = '===\n'
+def build_html(model_info):
+    rst = gen.make_rst(model_info)
+    title, body = rst.split(SPLIT_TITLE, 1)
 
 
 EMCC = "emcc --bind --memory-init-file 0 -s DISABLE_EXCEPTION_CATCHING=0 -O3 -o html/model/%s.js %s"
@@ -119,7 +151,7 @@ def compile_model(name):
     model_info = load_model_info(name)
     model_file = "/tmp/%s.cpp" % model_info.id
     with open(model_file, "w") as fid:
-        fid.write(webgen(model_info))
+        fid.write(build_cpp(model_info))
     status = os.system(EMCC % (model_info.id, model_file))
     if status == 0:
         return model_info.category.split(':')[-1] if model_info.category else "unknown"
